@@ -1,0 +1,17 @@
+# Environment
+.env
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# HuggingFace datasets cache (if pointed locally)
+.cache/
+
+# Experiment outputs
+results/
+outputs/

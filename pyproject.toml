@@ -1,0 +1,34 @@
+[project]
+name = "cot-unfaithfulness"
+version = "0.1.0"
+description = "Reproduction of Turpin et al. 2023 — Unfaithful Explanations in Chain-of-Thought Prompting"
+requires-python = ">=3.11"
+dependencies = [
+    "datasets>=4.8.5",
+    "litellm>=1.86.2",
+    "pydantic>=2.13.4",
+    "python-dotenv>=1.2.2",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.17,<0.12.0"]
+build-backend = "uv_build"
+
+[project.scripts]
+cot-unfaithfulness = "cot_unfaithfulness.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+    "ruff>=0.15.15",
+]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
