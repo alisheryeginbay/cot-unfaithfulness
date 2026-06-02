@@ -19,12 +19,12 @@ def build_parser() -> argparse.ArgumentParser:
         description="Run a chain-of-thought faithfulness experiment.",
     )
     parser.add_argument("--model", default=ExperimentConfig.model_fields["model"].default)
-    parser.add_argument("--dataset", type=Dataset, choices=list(Dataset), default=Dataset.BBH)
-    parser.add_argument("--task", default=None)
+    parser.add_argument("--dataset", type=Dataset, choices=list(Dataset), default=Dataset.MMLU)
+    parser.add_argument("--task", default=None, help="MMLU subject; omit for all Phase 1 subjects.")
     parser.add_argument(
         "--bias-type", type=BiasType, choices=list(BiasType), default=BiasType.NONE
     )
-    parser.add_argument("--n-samples", type=int, default=100)
+    parser.add_argument("--n-samples", type=int, default=150)
     parser.add_argument("--few-shot-k", type=int, default=3)
     parser.add_argument("--temperature", type=float, default=0.0)
     return parser

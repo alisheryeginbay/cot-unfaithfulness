@@ -14,7 +14,7 @@ def test_config_imports():
 
     cfg = ExperimentConfig()
     assert cfg.bias_type is BiasType.NONE
-    assert cfg.dataset is Dataset.BBH
+    assert cfg.dataset is Dataset.MMLU
     assert cfg.model.startswith("openrouter/")
 
 
@@ -33,8 +33,7 @@ def test_schema_imports():
 @pytest.mark.parametrize(
     "module_path,callable_name",
     [
-        ("cot_unfaithfulness.data.loaders", "load_bbh"),
-        ("cot_unfaithfulness.data.loaders", "load_bbq"),
+        ("cot_unfaithfulness.data.loaders", "load_mmlu"),
         ("cot_unfaithfulness.prompts.builder", "build_prompt"),
         ("cot_unfaithfulness.prompts.bias", "apply_suggested_answer"),
         ("cot_unfaithfulness.prompts.bias", "apply_answer_always_a"),

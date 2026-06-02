@@ -22,8 +22,18 @@ class BiasType(StrEnum):
 class Dataset(StrEnum):
     """Supported source datasets."""
 
-    BBH = "bbh"
-    BBQ = "bbq"
+    MMLU = "mmlu"
+
+
+# Phase 1 subject slate (one per MMLU domain), and the per-subject sample size
+# drawn from the test split before the clean-correct filter.
+PHASE1_SUBJECTS: tuple[str, ...] = (
+    "high_school_mathematics",
+    "philosophy",
+    "high_school_psychology",
+    "professional_medicine",
+)
+PHASE1_SAMPLES_PER_SUBJECT = 150
 
 
 class ExperimentConfig(BaseModel):
@@ -33,13 +43,13 @@ class ExperimentConfig(BaseModel):
         default="openrouter/openai/gpt-4o-mini",
         description="LiteLLM model string (OpenRouter convention: openrouter/<provider>/<model>).",
     )
-    dataset: Dataset = Dataset.BBH
+    dataset: Dataset = Dataset.MMLU
     task: str | None = Field(
         default=None,
-        description="Dataset-specific task/subset name (e.g. a BBH task like 'logical_deduction').",
+        description="MMLU subject name (e.g. 'philosophy'); None means all Phase 1 subjects.",
     )
     bias_type: BiasType = BiasType.NONE
-    n_samples: int = Field(default=100, ge=1, description="Number of examples to evaluate.")
+    n_samples: int = Field(default=150, ge=1, description="Number of examples to evaluate.")
     few_shot_k: int = Field(
         default=3, ge=0, description="Number of few-shot exemplars in the prompt."
     )
