@@ -34,9 +34,9 @@ def test_schema_imports():
     "module_path,callable_name",
     [
         ("cot_unfaithfulness.data.loaders", "load_mmlu"),
-        ("cot_unfaithfulness.prompts.builder", "build_prompt"),
-        ("cot_unfaithfulness.prompts.bias", "apply_suggested_answer"),
-        ("cot_unfaithfulness.prompts.bias", "apply_answer_always_a"),
+        ("cot_unfaithfulness.prompts.builder", "build_messages"),
+        ("cot_unfaithfulness.prompts.bias", "sample_suggested_letter"),
+        ("cot_unfaithfulness.prompts.bias", "suggested_hint"),
         ("cot_unfaithfulness.models.client", "complete"),
         ("cot_unfaithfulness.parsing.extract", "extract_answer"),
         ("cot_unfaithfulness.experiment.runner", "run_experiment"),
