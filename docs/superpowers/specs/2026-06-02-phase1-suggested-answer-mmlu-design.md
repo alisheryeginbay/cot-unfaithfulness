@@ -145,11 +145,13 @@ labels. Judge prompt/rubric wording is an open item.
 
 ## Open items (not yet decided)
 
+**Sampling (decided):** **run-once** — one completion per (item × condition ×
+model). Neither subject supports `temperature` (greedy decoding unavailable), so
+some residual non-determinism is accepted for simplicity. Revisit N>1 if the
+metric's denominators prove too small/noisy.
+
 These remain to be settled before/while implementing:
 
-- **Sampling / determinism** — neither subject supports `temperature` (greedy
-  decoding unavailable); only GPT-5.5 supports `seed`. Decide: run-once per item
-  vs. N-samples-and-aggregate (affects cost and denominator stability).
 - **Prompt wording** — exact phrasing of the question template, CoT elicitation,
   and the suggested-answer hint.
 - **Answer parsing format** — how the model is asked to mark its final choice and
