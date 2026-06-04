@@ -29,7 +29,7 @@ from cot_unfaithfulness.experiment.records import ConditionResult, DemoRecord, L
 from cot_unfaithfulness.experiment.store import append_jsonl, load_jsonl
 from cot_unfaithfulness.judge import label_completion
 from cot_unfaithfulness.metrics.faithfulness import FaithfulnessReport, compute_reports
-from cot_unfaithfulness.models.client import SUBJECT_REASONING, complete
+from cot_unfaithfulness.models.client import METER, SUBJECT_REASONING, complete, format_meter
 from cot_unfaithfulness.parsing.extract import extract_answer
 from cot_unfaithfulness.prompts.builder import Demo, build_messages
 
@@ -95,17 +95,27 @@ def demos_for_shot(demos: list[Demo], shot: int) -> list[Demo]:
 # ----- concurrency ----------------------------------------------------------
 
 
-def _execute(tasks: list, fn: Callable, out_path: Path, workers: int) -> list:
-    """Run ``fn`` over ``tasks`` in a thread pool, appending each result as it lands."""
+def _execute(tasks: list, fn: Callable, out_path: Path, workers: int, label: str = "") -> list:
+    """Run ``fn`` over ``tasks`` in a thread pool, appending each result as it lands.
+
+    Logs a running cost total every 25 completions so spend can be watched live.
+    """
     results = []
     if not tasks:
         return results
+    total = len(tasks)
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = [pool.submit(fn, t) for t in tasks]
         for future in as_completed(futures):
             record = future.result()
             append_jsonl(out_path, record)
             results.append(record)
+            if len(results) % 25 == 0 or len(results) == total:
+                print(
+                    f"  [{label}] {len(results)}/{total}  running cost "
+                    f"${METER.total_cost():.4f}",
+                    flush=True,
+                )
     return results
 
 
@@ -139,7 +149,7 @@ def run_baseline(config: RunConfig, items: list[Example], x_map: dict[str, str])
         model, ex = task
         return _complete_condition(config, model, ex, shot=0, biased=False, demos=[], x_map=x_map)
 
-    _execute(tasks, work, config.responses_path, config.workers)
+    _execute(tasks, work, config.responses_path, config.workers, label="baseline")
 
 
 def build_all_demos(config: RunConfig) -> dict[tuple[str, str], list[Demo]]:
@@ -196,7 +206,7 @@ def run_conditions(
         shot_demos = demos_for_shot(demos.get((subject, model), []), shot)
         return _complete_condition(config, model, ex, shot, biased, shot_demos, x_map)
 
-    _execute(tasks, work, config.responses_path, config.workers)
+    _execute(tasks, work, config.responses_path, config.workers, label="conditions")
 
 
 def run_judge(config: RunConfig, items_by_id: dict[str, Example]) -> None:
@@ -219,7 +229,7 @@ def run_judge(config: RunConfig, items_by_id: dict[str, Example]) -> None:
             evidence=evidence,
         )
 
-    _execute(biased, work, config.labels_path, config.workers)
+    _execute(biased, work, config.labels_path, config.workers, label="judge")
 
 
 def build_report(config: RunConfig) -> list[FaithfulnessReport]:
@@ -281,10 +291,21 @@ def run_phase1(config: RunConfig) -> list[FaithfulnessReport]:
     x_map = sample_x_map(items, config.seed)
 
     run_baseline(config, items, x_map)
+    print(f"[phase] baseline done; cost so far ${METER.total_cost():.4f}", flush=True)
+
     baseline = load_jsonl(config.responses_path, ConditionResult)
     surviving = clean_correct_intersection(baseline, config.models)
+    print(f"[phase] surviving (clean-correct intersection): {len(surviving)} items", flush=True)
 
     demos = build_all_demos(config)
+    print(f"[phase] demos done; cost so far ${METER.total_cost():.4f}", flush=True)
+
     run_conditions(config, items_by_id, surviving, x_map, demos)
+    print(f"[phase] conditions done; cost so far ${METER.total_cost():.4f}", flush=True)
+
     run_judge(config, items_by_id)
+    print(f"[phase] judge done; cost so far ${METER.total_cost():.4f}", flush=True)
+
+    print("[cost] per-model spend this run:")
+    print(format_meter(), flush=True)
     return build_report(config)
