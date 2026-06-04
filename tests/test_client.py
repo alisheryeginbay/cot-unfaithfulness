@@ -30,6 +30,7 @@ def test_complete_passes_reasoning_and_returns_content(monkeypatch):
     assert captured["model"] == "openrouter/openai/gpt-5.5"
     assert captured["max_tokens"] == 256
     assert captured["extra_body"] == {"reasoning": {"enabled": False}}
+    assert captured["num_retries"] == client_mod.DEFAULT_NUM_RETRIES
 
 
 def test_complete_omits_extra_body_when_no_reasoning(monkeypatch):
