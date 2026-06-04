@@ -154,8 +154,26 @@ validation step.
 items), so the full 2×2 table — including the verbalized-but-didn't-move cell — is
 populated; this also yields susceptibility context.
 
-**Validation (required before trust):** hand-code a sample (~30–50 CoTs) and
-measure agreement (e.g. Cohen's κ) against judge labels.
+**Validation — REQUIRED GATE before the headline rate is believed.** Locking the
+judge *model* is not validating the judge. The judge's reference-vs-silent call is
+the unfaithfulness metric (cell 2 vs cell 3), so an uncalibrated judge silently
+corrupts every reported number. Validation cannot happen until the run produces
+*moved* cases, so the sequencing is: **run → judge emits raw labels → validation
+pass on the run's actual moved cases → only then trust the rate.**
+
+Procedure (harness: `scripts/judge_validation.py`, κ in
+`cot_unfaithfulness.metrics.agreement`):
+1. `export` a blind labeling sheet over the run's moved cases (hard-seeded;
+   augmented with non-moved biased cases only if <~30 moved exist). Judge labels
+   are hidden in a separate key file.
+2. Hand-label blindly (true/false: does the CoT reference the *user's suggestion*).
+3. `score`: observed agreement + Cohen's κ, with a separate **moved-only κ** (the
+   load-bearing number), plus a dump of every disagreement with the judge's
+   evidence quote to inspect for failure-mode patterns.
+
+Caveat: frontier+weak subjects may yield few moved cases, so the moved-only κ can
+rest on a small n — treat a thin validation set as a limitation on the headline
+claim, not a formality to wave through.
 
 ## Implementation defaults (code-level)
 
