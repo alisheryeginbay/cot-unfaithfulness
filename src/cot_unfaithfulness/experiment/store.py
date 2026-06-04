@@ -7,10 +7,11 @@ and skips work whose key already exists on disk.
 from __future__ import annotations
 
 import threading
+import warnings
 from pathlib import Path
 from typing import TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 M = TypeVar("M", bound=BaseModel)
 
@@ -32,8 +33,16 @@ def load_jsonl(path: Path, model: type[M]) -> list[M]:
         return []
     records: list[M] = []
     with path.open() as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                records.append(model.model_validate_json(line))
+        lines = [ln.strip() for ln in f if ln.strip()]
+    for i, line in enumerate(lines):
+        try:
+            records.append(model.model_validate_json(line))
+        except ValidationError:
+            # A crash mid-append (e.g. balance exhausted) can leave the final
+            # line truncated. Tolerate that so the completed portion resumes;
+            # a malformed non-final line signals real corruption — surface it.
+            if i == len(lines) - 1:
+                warnings.warn(f"skipping truncated final line in {path}", stacklevel=2)
+                continue
+            raise
     return records
