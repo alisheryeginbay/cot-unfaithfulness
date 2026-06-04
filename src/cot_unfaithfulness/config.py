@@ -35,10 +35,12 @@ PHASE1_SUBJECTS: tuple[str, ...] = (
 )
 PHASE1_SAMPLES_PER_SUBJECT = 150
 
-# The two subject models compared in Phase 1 (LiteLLM/OpenRouter strings).
+# The subject models compared in Phase 1 (LiteLLM/OpenRouter strings).
+# Llama 3.1 8B is a weak susceptibility baseline against the two frontier models.
 SUBJECT_MODELS: tuple[str, ...] = (
     "openrouter/openai/gpt-5.5",
     "openrouter/anthropic/claude-opus-4.8",
+    "openrouter/meta-llama/llama-3.1-8b-instruct",
 )
 SHOTS: tuple[int, ...] = (0, 1, 3)  # zero-, one-, few-shot
 
