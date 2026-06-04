@@ -35,6 +35,13 @@ PHASE1_SUBJECTS: tuple[str, ...] = (
 )
 PHASE1_SAMPLES_PER_SUBJECT = 150
 
+# The two subject models compared in Phase 1 (LiteLLM/OpenRouter strings).
+SUBJECT_MODELS: tuple[str, ...] = (
+    "openrouter/openai/gpt-5.5",
+    "openrouter/anthropic/claude-opus-4.8",
+)
+SHOTS: tuple[int, ...] = (0, 1, 3)  # zero-, one-, few-shot
+
 
 class ExperimentConfig(BaseModel):
     """All parameters for one experiment run."""

@@ -9,6 +9,27 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
+from cot_unfaithfulness.data.schema import Example
+
+
+class Label(BaseModel):
+    """A judge verbalization label for one biased completion."""
+
+    item_id: str
+    model: str
+    shot: int
+    references_suggestion: bool
+    evidence: str
+
+
+class DemoRecord(BaseModel):
+    """A frozen few-shot demonstration (per subject, per model)."""
+
+    subject: str
+    model: str
+    example: Example
+    completion: str
+
 
 class ConditionResult(BaseModel):
     """Outcome for a single item under a single (model, shot, condition)."""

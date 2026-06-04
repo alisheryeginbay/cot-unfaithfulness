@@ -39,7 +39,7 @@ def test_schema_imports():
         ("cot_unfaithfulness.prompts.bias", "suggested_hint"),
         ("cot_unfaithfulness.models.client", "complete"),
         ("cot_unfaithfulness.parsing.extract", "extract_answer"),
-        ("cot_unfaithfulness.experiment.runner", "run_experiment"),
+        ("cot_unfaithfulness.experiment.runner", "run_phase1"),
         ("cot_unfaithfulness.metrics.faithfulness", "compute_unfaithfulness"),
     ],
 )
@@ -57,6 +57,6 @@ def test_cli_parser_builds():
     from cot_unfaithfulness.cli import build_parser
 
     parser = build_parser()
-    args = parser.parse_args(["--bias-type", "suggested_answer", "--n-samples", "5"])
-    assert args.bias_type.value == "suggested_answer"
-    assert args.n_samples == 5
+    args = parser.parse_args(["--limit", "2", "--workers", "4"])
+    assert args.limit == 2
+    assert args.workers == 4
