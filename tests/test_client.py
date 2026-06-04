@@ -29,7 +29,10 @@ def test_complete_passes_reasoning_and_returns_content(monkeypatch):
     assert out == "The best answer is: (B)"
     assert captured["model"] == "openrouter/openai/gpt-5.5"
     assert captured["max_tokens"] == 256
-    assert captured["extra_body"] == {"reasoning": {"enabled": False}}
+    assert captured["extra_body"] == {
+        "usage": {"include": True},
+        "reasoning": {"enabled": False},
+    }
     assert captured["num_retries"] == client_mod.DEFAULT_NUM_RETRIES
 
 
@@ -43,7 +46,36 @@ def test_complete_omits_extra_body_when_no_reasoning(monkeypatch):
     monkeypatch.setattr(client_mod.litellm, "completion", fake_completion)
 
     complete([{"role": "user", "content": "q"}], model="m")
-    assert captured["extra_body"] is None
+    assert captured["extra_body"] == {"usage": {"include": True}}
+
+
+def test_meter_records_usage_and_native_cost(monkeypatch):
+    usage = SimpleNamespace(prompt_tokens=120, completion_tokens=40, cost=0.0033)
+    resp = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))], usage=usage
+    )
+    monkeypatch.setattr(client_mod.litellm, "completion", lambda **kw: resp)
+
+    meter = client_mod.CostMeter()
+    monkeypatch.setattr(client_mod, "METER", meter)
+
+    complete([{"role": "user", "content": "q"}], model="zzz")
+    snap = meter.snapshot()["zzz"]
+    assert snap["calls"] == 1
+    assert snap["prompt_tokens"] == 120
+    assert snap["completion_tokens"] == 40
+    assert abs(snap["cost_usd"] - 0.0033) < 1e-9
+    assert abs(meter.total_cost() - 0.0033) < 1e-9
+
+
+def test_extract_cost_falls_back_to_litellm_response_cost():
+    resp = SimpleNamespace(
+        usage=SimpleNamespace(prompt_tokens=10, completion_tokens=5),
+        _hidden_params={"response_cost": 0.001},
+    )
+    pt, ct, cost = client_mod._extract_usage_cost(resp)
+    assert (pt, ct) == (10, 5)
+    assert abs(cost - 0.001) < 1e-9
 
 
 def test_complete_handles_none_content(monkeypatch):

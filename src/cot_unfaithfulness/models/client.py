@@ -7,6 +7,10 @@ OpenRouter passthrough ``extra_body={"reasoning": ...}`` rather than LiteLLM's
 
 from __future__ import annotations
 
+import threading
+from collections import defaultdict
+from dataclasses import dataclass
+
 import litellm
 
 # Reasoning settings by role (see design doc).
@@ -16,6 +20,94 @@ JUDGE_REASONING: dict = {"effort": "low"}  # judge: minimized (cannot fully disa
 # Retries (with exponential backoff, honoring Retry-After) for transient
 # failures like 429s. Weak/cheap endpoints rate-limit aggressively.
 DEFAULT_NUM_RETRIES = 8
+
+
+@dataclass
+class _ModelSpend:
+    calls: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    cost_usd: float = 0.0  # best-available USD (OpenRouter native, else litellm)
+
+
+class CostMeter:
+    """Thread-safe accumulator of per-model API spend across a run.
+
+    Counts every ``complete`` call (including demo resample attempts), so the
+    snapshot reflects real call volume and cost, not just successful items.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._by_model: dict[str, _ModelSpend] = defaultdict(_ModelSpend)
+
+    def record(
+        self, model: str, *, prompt_tokens: int, completion_tokens: int, cost_usd: float
+    ) -> None:
+        with self._lock:
+            s = self._by_model[model]
+            s.calls += 1
+            s.prompt_tokens += prompt_tokens
+            s.completion_tokens += completion_tokens
+            s.cost_usd += cost_usd
+
+    def snapshot(self) -> dict[str, dict]:
+        with self._lock:
+            return {m: vars(s).copy() for m, s in self._by_model.items()}
+
+    def total_cost(self) -> float:
+        with self._lock:
+            return sum(s.cost_usd for s in self._by_model.values())
+
+    def reset(self) -> None:
+        with self._lock:
+            self._by_model.clear()
+
+
+# Process-global meter; read via ``METER.snapshot()`` / ``METER.total_cost()``.
+METER = CostMeter()
+
+
+def format_meter() -> str:
+    """Render the global meter as a per-model spend table with a total."""
+    snap = METER.snapshot()
+    lines = []
+    for model, s in sorted(snap.items()):
+        lines.append(
+            f"  {model:46s} calls={s['calls']:6d}  ${s['cost_usd']:.4f}"
+        )
+    lines.append(f"  {'TOTAL':46s} {'':12s} ${METER.total_cost():.4f}")
+    return "\n".join(lines)
+
+
+def _extract_usage_cost(response) -> tuple[int, int, float]:
+    """Pull (prompt_tokens, completion_tokens, cost_usd) from a litellm response.
+
+    Cost preference: OpenRouter's native ``usage.cost`` (requested via
+    ``usage.include``) which reflects actual credits charged; falls back to
+    litellm's computed ``response_cost`` (may be 0 for models absent from its
+    price map).
+    """
+    prompt_tokens = completion_tokens = 0
+    cost = 0.0
+    usage = getattr(response, "usage", None)
+    if usage is not None:
+        prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
+        completion_tokens = getattr(usage, "completion_tokens", 0) or 0
+        native = getattr(usage, "cost", None)
+        if native is None:
+            try:
+                native = usage.model_dump().get("cost")
+            except Exception:
+                native = None
+        if native:
+            cost = float(native)
+    if not cost:
+        hidden = getattr(response, "_hidden_params", {}) or {}
+        rc = hidden.get("response_cost")
+        if rc:
+            cost = float(rc)
+    return prompt_tokens, completion_tokens, cost
 
 
 def complete(
@@ -28,6 +120,8 @@ def complete(
 ) -> str:
     """Send chat messages to ``model`` and return the completion text.
 
+    Records token usage and cost into the process-global ``METER``.
+
     Args:
         messages: chat messages (role/content dicts).
         model: LiteLLM/OpenRouter model string.
@@ -36,12 +130,18 @@ def complete(
             subjects, ``{"effort": "low"}`` for the judge). Omitted if None.
         num_retries: transient-failure retries with exponential backoff.
     """
-    extra_body = {"reasoning": reasoning} if reasoning is not None else None
+    extra_body: dict = {"usage": {"include": True}}  # ask OpenRouter for native cost
+    if reasoning is not None:
+        extra_body["reasoning"] = reasoning
     response = litellm.completion(
         model=model,
         messages=messages,
         max_tokens=max_tokens,
         extra_body=extra_body,
         num_retries=num_retries,
+    )
+    prompt_tokens, completion_tokens, cost = _extract_usage_cost(response)
+    METER.record(
+        model, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens, cost_usd=cost
     )
     return response.choices[0].message.content or ""
