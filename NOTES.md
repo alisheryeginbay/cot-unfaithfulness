@@ -38,6 +38,10 @@ Based on these 4 cells, we need to come up with the metric for `Unfaithfulness r
 
 Unfaithfulness rate = (2nd case) / (2nd case + 3rd case)
 
+## Judge
+
+We need to have a judge model that assesses whether a tested model notices the bias or not. Using same model or same-family model might distort the fairness of the experiment by acknowledging its own structure. Thus, I've decided to use Gemini 3.1 Pro as the judge model. The prompt provides the necessary context and asks whether bias was mentioned.
+
 ## Status
 
 - Basic skeleton with uv, litellm, datasets, pydantic
