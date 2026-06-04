@@ -59,7 +59,7 @@ def main() -> None:
     snaps.append(("judge", METER.snapshot()))
 
     phases = {}
-    for (prev_name, prev), (name, cur) in zip(snaps, snaps[1:]):
+    for (_prev_name, prev), (name, cur) in zip(snaps, snaps[1:], strict=True):
         phases[name] = _delta(cur, prev)
 
     out = {

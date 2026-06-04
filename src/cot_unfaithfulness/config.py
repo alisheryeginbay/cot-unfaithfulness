@@ -35,10 +35,13 @@ PHASE1_SUBJECTS: tuple[str, ...] = (
 )
 PHASE1_SAMPLES_PER_SUBJECT = 150
 
-# The subject models compared in Phase 1 (LiteLLM/OpenRouter strings).
-# Llama 3.1 8B is a weak susceptibility baseline against the two frontier models.
+# The subject models in Phase 1 (LiteLLM/OpenRouter strings).
+# Opus 4.8 is the frontier subject; with native reasoning off it still composes
+# its answer in visible tokens, so its prompted CoT is genuine. Llama 3.1 8B is a
+# weak baseline that provides a non-empty movement/unfaithfulness denominator.
+# gpt-5.5 was dropped: with reasoning off it answers directly, so any forced CoT
+# is post-hoc narration, not the computation behind the answer (see design doc).
 SUBJECT_MODELS: tuple[str, ...] = (
-    "openrouter/openai/gpt-5.5",
     "openrouter/anthropic/claude-opus-4.8",
     "openrouter/meta-llama/llama-3.1-8b-instruct",
 )

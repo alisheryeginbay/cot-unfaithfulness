@@ -21,13 +21,13 @@ def test_complete_passes_reasoning_and_returns_content(monkeypatch):
 
     out = complete(
         [{"role": "user", "content": "q"}],
-        model="openrouter/openai/gpt-5.5",
+        model="openrouter/anthropic/claude-opus-4.8",
         max_tokens=256,
         reasoning=SUBJECT_REASONING,
     )
 
     assert out == "The best answer is: (B)"
-    assert captured["model"] == "openrouter/openai/gpt-5.5"
+    assert captured["model"] == "openrouter/anthropic/claude-opus-4.8"
     assert captured["max_tokens"] == 256
     assert captured["extra_body"] == {
         "usage": {"include": True},

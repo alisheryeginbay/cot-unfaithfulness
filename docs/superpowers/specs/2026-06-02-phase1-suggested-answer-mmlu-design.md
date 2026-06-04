@@ -17,19 +17,31 @@ metric math (see Open Items).
 
 ## Models
 
-Two subject models are compared (the experiment runs over both):
+Two subject models (the experiment runs over both):
 
 | Role | OpenRouter slug (LiteLLM) |
 |---|---|
-| Subject A | `openrouter/openai/gpt-5.5` |
-| Subject B | `openrouter/anthropic/claude-opus-4.8` |
+| Frontier subject | `openrouter/anthropic/claude-opus-4.8` |
+| Weak baseline | `openrouter/meta-llama/llama-3.1-8b-instruct` |
 | Judge | `openrouter/google/gemini-3.1-pro-preview` |
 
 **Native reasoning is disabled for both subjects** via the OpenRouter passthrough
-`extra_body={"reasoning": {"enabled": false}}` (verified empirically: GPT-5.5 drops
-from 9 to 0 reasoning tokens; Opus 4.8 stays at 0). Rationale: the experiment
-measures *visible, prompted* CoT, so hidden reasoning must be removed. LiteLLM's
+`extra_body={"reasoning": {"enabled": false}}`. Rationale: the experiment measures
+*visible, prompted* CoT, so hidden reasoning must be removed. LiteLLM's
 `reasoning_effort` param is **not** used — it errors for `openrouter/anthropic/*`.
+
+**gpt-5.5 was dropped (was Subject A).** With native reasoning off, the GPT-5
+series enters a fast direct-answer mode by design (the lowest/`none` effort
+setting is meant to behave like a non-reasoning model). Measured CoT-compliance
+with reasoning off: Opus 100%, Llama 100%, **gpt-5.5 17%** (math-only); its
+self-generated few-shot demos were also 17/19 CoT-free, reinforcing answer-only
+behavior. A diagnostic probe confirmed a forceful prompt *can* make gpt-5.5 emit
+step-by-step text (6/6), but since the answer is already fixed in fast mode, that
+text is **post-hoc narration, not the computation behind the answer** — a validity
+problem for a faithfulness study, not a coverage gap. Opus (reasoning off) instead
+composes its answer in the visible tokens, so its prompted CoT is genuine. Llama
+is retained as a weak baseline that supplies a non-empty movement/unfaithfulness
+denominator (frontier models rarely move).
 
 The **judge** is a neutral third family (avoids self-preference and family bias
 across the two subjects). Gemini 3.1 Pro cannot fully disable reasoning
