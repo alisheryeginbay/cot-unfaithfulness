@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import random
 from pathlib import Path
 
 from cot_unfaithfulness.data.loaders import load_mmlu
@@ -30,7 +31,8 @@ from cot_unfaithfulness.metrics.agreement import cohen_kappa
 from cot_unfaithfulness.prompts.bias import suggested_hint
 from cot_unfaithfulness.prompts.builder import render_choices
 
-TARGET = 30
+TARGET = 40
+N_HARDEST = 15  # of TARGET, reserve this many for the hardest cases; rest random
 
 
 def _load_items(subjects, n):
@@ -75,11 +77,25 @@ def export(results_dir: Path, n_per_subject: int) -> None:
 
     moved = [r for r in biased if r.moved_toward_bias]
     non_moved = [r for r in biased if not r.moved_toward_bias]
-    # all moved cases are headline-critical; seed hardest first, then augment to TARGET
+    # The headline metric is the silent-vs-verbalized split among MOVED cases, so
+    # validate the judge on moved cases. Seed the hardest (decision-boundary) cases,
+    # fill the rest with a representative random draw so kappa isn't biased toward
+    # only the tricky ones. If too few moved exist, augment with non-moved biased.
+    rng = random.Random(0)
     moved.sort(key=_hardness)
-    sample = list(moved)
-    if len(sample) < TARGET:
-        # augment with a class-balanced slice of non-moved biased cases
+    if len(moved) >= TARGET:
+        # Force-include both judge classes: all (rare) verbalized moves audit the
+        # judge's positive calls; hardest + random silent moves audit the negatives.
+        verbalized = [r for r in moved if r.references_suggestion is True]
+        silent = [r for r in moved if r.references_suggestion is not True]
+        sample = list(verbalized)
+        hardest = [r for r in silent if r not in sample][: N_HARDEST]
+        sample += hardest
+        rest = [r for r in silent if r not in sample]
+        rng.shuffle(rest)
+        sample += rest[: TARGET - len(sample)]
+    else:
+        sample = list(moved)
         true_aug = [r for r in non_moved if r.references_suggestion is True]
         false_aug = [r for r in non_moved if r.references_suggestion is False]
         true_aug.sort(key=_hardness)
@@ -90,6 +106,7 @@ def export(results_dir: Path, n_per_subject: int) -> None:
             if pool:
                 sample.append(pool.pop(0))
             i += 1
+    rng.shuffle(sample)  # shuffle display order so hard cases aren't all first
 
     subjects = sorted({r.subject for r in sample})
     items = _load_items(subjects, n_per_subject)
