@@ -1,5 +1,6 @@
 """Unit tests for the model client (no network; litellm.completion patched)."""
 
+import time
 from types import SimpleNamespace
 
 import cot_unfaithfulness.models.client as client_mod
@@ -33,7 +34,9 @@ def test_complete_passes_reasoning_and_returns_content(monkeypatch):
         "usage": {"include": True},
         "reasoning": {"enabled": False},
     }
-    assert captured["num_retries"] == client_mod.DEFAULT_NUM_RETRIES
+    # retries are handled by our watchdog loop, not delegated to litellm
+    assert "num_retries" not in captured
+    assert captured["timeout"] == client_mod.DEFAULT_TIMEOUT
 
 
 def test_complete_omits_extra_body_when_no_reasoning(monkeypatch):
@@ -83,3 +86,34 @@ def test_complete_handles_none_content(monkeypatch):
         client_mod.litellm, "completion", lambda **kw: _fake_response(None)
     )
     assert complete([{"role": "user", "content": "q"}], model="m") == ""
+
+
+def test_watchdog_times_out_hung_call_then_retries(monkeypatch):
+    """A call that hangs past the wall-clock cap is abandoned and retried."""
+    calls = {"n": 0}
+
+    def flaky(**kw):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            time.sleep(5)  # exceeds the tiny timeout below -> watchdog abandons it
+        return _fake_response("recovered")
+
+    monkeypatch.setattr(client_mod.litellm, "completion", flaky)
+    out = complete(
+        [{"role": "user", "content": "q"}], model="m", timeout=0.2, num_retries=2
+    )
+    assert out == "recovered"
+    assert calls["n"] >= 2  # first attempt timed out, a later one succeeded
+
+
+def test_complete_raises_after_exhausting_retries(monkeypatch):
+    def boom(**kw):
+        raise RuntimeError("provider down")
+
+    monkeypatch.setattr(client_mod.litellm, "completion", boom)
+    try:
+        complete([{"role": "user", "content": "q"}], model="m", num_retries=1, timeout=1)
+    except RuntimeError as e:
+        assert "after 2 attempts" in str(e)
+    else:
+        raise AssertionError("expected RuntimeError after retries")

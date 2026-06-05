@@ -8,7 +8,10 @@ OpenRouter passthrough ``extra_body={"reasoning": ...}`` rather than LiteLLM's
 from __future__ import annotations
 
 import threading
+import time
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeoutError
 from dataclasses import dataclass
 
 import litellm
@@ -17,9 +20,19 @@ import litellm
 SUBJECT_REASONING: dict = {"enabled": False}  # subjects: native reasoning off
 JUDGE_REASONING: dict = {"effort": "low"}  # judge: minimized (cannot fully disable)
 
-# Retries (with exponential backoff, honoring Retry-After) for transient
-# failures like 429s. Weak/cheap endpoints rate-limit aggressively.
+# Retries with exponential backoff for transient failures (429s) and hangs.
 DEFAULT_NUM_RETRIES = 8
+
+# Hard per-attempt wall-clock timeout (seconds), enforced by a watchdog thread.
+# litellm's own ``timeout`` is a *read* timeout that resets on each streamed chunk,
+# so a slowly-trickling reasoning stream (e.g. Gemini) never trips it and the
+# worker hangs forever. A total wall-clock cap is the only reliable break.
+DEFAULT_TIMEOUT = 90
+
+# Dedicated pool for watchdog-guarded calls; sized well above the run's worker
+# count so transiently-abandoned (slow) calls can't exhaust it before they finish.
+# Daemon threads so a leak never blocks interpreter exit.
+_CALL_POOL = ThreadPoolExecutor(max_workers=256, thread_name_prefix="llm-call")
 
 
 @dataclass
@@ -117,6 +130,7 @@ def complete(
     max_tokens: int = 1024,
     reasoning: dict | None = None,
     num_retries: int = DEFAULT_NUM_RETRIES,
+    timeout: float = DEFAULT_TIMEOUT,
 ) -> str:
     """Send chat messages to ``model`` and return the completion text.
 
@@ -129,17 +143,43 @@ def complete(
         reasoning: OpenRouter reasoning control (e.g. ``{"enabled": False}`` for
             subjects, ``{"effort": "low"}`` for the judge). Omitted if None.
         num_retries: transient-failure retries with exponential backoff.
+        timeout: per-request timeout in seconds; a hang becomes a retryable error.
     """
     extra_body: dict = {"usage": {"include": True}}  # ask OpenRouter for native cost
     if reasoning is not None:
         extra_body["reasoning"] = reasoning
-    response = litellm.completion(
-        model=model,
-        messages=messages,
-        max_tokens=max_tokens,
-        extra_body=extra_body,
-        num_retries=num_retries,
-    )
+
+    def _call():
+        # litellm's read timeout as a best-effort inner cap; the watchdog below is
+        # the real guarantee. Retries are handled here, not via num_retries.
+        return litellm.completion(
+            model=model,
+            messages=messages,
+            max_tokens=max_tokens,
+            extra_body=extra_body,
+            timeout=timeout,
+        )
+
+    last_err: Exception | None = None
+    response = None
+    for attempt in range(num_retries + 1):
+        future = _CALL_POOL.submit(_call)
+        try:
+            response = future.result(timeout=timeout)  # hard wall-clock cap
+            break
+        except FutureTimeoutError as err:
+            last_err = err  # abandon the hung call; its thread frees on stream end
+        except Exception as err:  # noqa: BLE001 — retry any provider/transport error
+            last_err = err
+            # Auth / credit / key-limit errors (401/402/403) are not transient —
+            # retrying with backoff just disguises them as a hang. Fail fast.
+            if getattr(err, "status_code", None) in (401, 402, 403):
+                raise
+        if attempt < num_retries:
+            time.sleep(min(2**attempt, 20))
+    if response is None:
+        raise RuntimeError(f"completion failed after {num_retries + 1} attempts") from last_err
+
     prompt_tokens, completion_tokens, cost = _extract_usage_cost(response)
     METER.record(
         model, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens, cost_usd=cost
