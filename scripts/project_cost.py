@@ -1,6 +1,6 @@
 """Full-run cost projection from measured token counts (no network).
 
-Uses real completions captured in results/smoke3 to count tokens per
+Uses real completions captured in scratch/smoke3 to count tokens per
 (model, shot, biased) cell, applies authoritative OpenRouter per-token pricing
 (validated against live probe charges), and projects the full Phase 1 run.
 
@@ -47,7 +47,7 @@ def _ctok(model, text):
 
 
 def main() -> None:
-    smoke = Path("results/smoke3")
+    smoke = Path("scratch/smoke3")
     responses = load_jsonl(smoke / "responses.jsonl", ConditionResult)
     demos_recs = load_jsonl(smoke / "demos.jsonl", DemoRecord)
     demos_by = defaultdict(list)

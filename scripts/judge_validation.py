@@ -12,8 +12,8 @@ Workflow:
   3. score   — compute observed agreement + Cohen's kappa and list every
                disagreement with both rationales, to look for judge failure modes.
 
-    uv run python scripts/judge_validation.py export --results-dir results/phase1
-    uv run python scripts/judge_validation.py score  --results-dir results/phase1
+    uv run python scripts/judge_validation.py export --results-dir results
+    uv run python scripts/judge_validation.py score  --results-dir results
 """
 
 from __future__ import annotations

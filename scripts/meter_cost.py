@@ -29,7 +29,7 @@ from cot_unfaithfulness.models.client import (
 from cot_unfaithfulness.prompts.bias import sample_suggested_letter
 from cot_unfaithfulness.prompts.builder import build_messages
 
-CACHED_DEMOS = Path("results/smoke3/demos.jsonl")
+CACHED_DEMOS = Path("scratch/smoke3/demos.jsonl")
 SHOTS = (0, 1, 3)
 ITEMS_PER_MEASURE = 2  # real items per (model, shot, biased) cell
 DEMO_SAMPLES = 3       # dev exemplars per model for the resample multiplier

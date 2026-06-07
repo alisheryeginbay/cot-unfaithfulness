@@ -47,10 +47,10 @@ cp .env.example .env   # then add your OPENROUTER_API_KEY
 
 ```bash
 # Smoke run (a few items/subject) to validate the pipeline cheaply:
-uv run cot-unfaithfulness --results-dir results/smoke --limit 2 --workers 6
+uv run cot-unfaithfulness --results-dir scratch/smoke --limit 2 --workers 6
 
 # Full Phase 1 run (resumable; skips anything already on disk):
-uv run cot-unfaithfulness --results-dir results/phase1 --workers 6
+uv run cot-unfaithfulness --results-dir results --workers 6
 ```
 
 The run is **resumable and crash-safe** — each phase (baseline → demos →
@@ -61,11 +61,11 @@ per-model cost meter prints as it goes.
 
 ```bash
 # 1. export a blind, class-stratified labeling sheet over the moved cases:
-uv run python scripts/judge_validation.py export --results-dir results/phase1
-# 2. hand-label results/phase1/validation_answers.csv (true/false per row)
+uv run python scripts/judge_validation.py export --results-dir results
+# 2. hand-label results/validation_answers.csv (true/false per row)
 #    (do NOT open validation_key.json until done)
 # 3. score: observed agreement + Cohen's kappa + disagreements
-uv run python scripts/judge_validation.py score  --results-dir results/phase1
+uv run python scripts/judge_validation.py score  --results-dir results
 ```
 
 ## Layout

@@ -12,6 +12,10 @@ __pycache__/
 # HuggingFace datasets cache (if pointed locally)
 .cache/
 
-# Experiment outputs
-results/
+# Scratch experiment outputs (smoke runs, cost meters, generated summaries).
+# Real run data under results/ IS tracked.
+scratch/
 outputs/
+
+# macOS
+.DS_Store

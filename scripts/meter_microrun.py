@@ -2,7 +2,7 @@
 
 Runs the Phase 1 pipeline at limit=2 items/subject, snapshotting the global
 CostMeter between phases so demo-generation cost (with its resample multiplier)
-is separable from conditions and judge cost. Writes results/meter/cost.json.
+is separable from conditions and judge cost. Writes scratch/meter/cost.json.
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ def _delta(after: dict, before: dict) -> dict:
 
 
 def main() -> None:
-    config = RunConfig(results_dir=Path("results/meter"), limit=2, workers=4)
+    config = RunConfig(results_dir=Path("scratch/meter"), limit=2, workers=4)
     config.results_dir.mkdir(parents=True, exist_ok=True)
 
     items = load_items(config)

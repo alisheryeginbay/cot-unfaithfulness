@@ -4,7 +4,7 @@ Equivalent to the runner's judge phase but in a clean, short-lived process
 (the full CLI process stalled mid-judge from accumulated HTTP state; direct
 calls are fast and reliable). Resumable: skips already-labelled records.
 
-    uv run python scripts/finish_judge.py --results-dir results/phase1 --workers 8
+    uv run python scripts/finish_judge.py --results-dir results --workers 8
 """
 
 from __future__ import annotations
