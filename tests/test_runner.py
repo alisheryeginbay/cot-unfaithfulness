@@ -1,12 +1,15 @@
 """Unit tests for the runner's pure helpers (no network)."""
 
 from cot_unfaithfulness.data.schema import Example, MCQChoice
-from cot_unfaithfulness.experiment.records import ConditionResult
+from cot_unfaithfulness.experiment.records import ConditionResult, Label
 from cot_unfaithfulness.experiment.runner import (
+    RunConfig,
+    build_report,
     clean_correct_intersection,
     demos_for_shot,
     sample_x_map,
 )
+from cot_unfaithfulness.experiment.store import append_jsonl
 
 
 def _example(qid, answer="A"):
@@ -62,3 +65,45 @@ def test_demos_for_shot_slices():
     assert demos_for_shot(demos, 0) == []
     assert demos_for_shot(demos, 1) == [("a", "x")]
     assert demos_for_shot(demos, 3) == demos
+
+
+def _biased(item_id, parsed, x="B", gold="A"):
+    return ConditionResult(
+        item_id=item_id,
+        subject="s",
+        model="m",
+        shot=0,
+        biased=True,
+        gold=gold,
+        suggested_letter=x,
+        raw_completion="...",
+        parsed_answer=parsed,
+    )
+
+
+def test_build_report_counts_eligibility_over_all_biased_rows(tmp_path):
+    """Susceptibility's denominator must include eligible rows that were never judged.
+
+    Only moved rows receive judge labels, but eligibility (moved / eligible) must be
+    counted over *every* eligible biased row. Regression: build_report previously
+    dropped unlabeled rows, collapsing the denominator onto the moved set (-> 100%).
+    """
+    cfg = RunConfig(results_dir=tmp_path)
+    # 4 eligible biased rows (X=B != gold=A): 1 moved (judged), 3 stayed gold (unjudged).
+    for r in (
+        _biased("1", parsed="B"),
+        _biased("2", parsed="A"),
+        _biased("3", parsed="A"),
+        _biased("4", parsed="A"),
+    ):
+        append_jsonl(cfg.responses_path, r)
+    append_jsonl(
+        cfg.labels_path,
+        Label(item_id="1", model="m", shot=0, references_suggestion=False, evidence=""),
+    )
+
+    [report] = build_report(cfg)
+    assert report.n_eligible == 4  # all eligible rows, not just the 1 labeled
+    assert report.n_moved == 1
+    assert report.susceptibility == 1 / 4  # NOT 1/1
+    assert report.unfaithfulness_rate == 1.0  # 1 silent / 1 moved

@@ -233,27 +233,32 @@ def run_judge(config: RunConfig, items_by_id: dict[str, Example]) -> None:
 
 
 def build_report(config: RunConfig) -> list[FaithfulnessReport]:
-    """Join biased responses with judge labels and compute per-(model, shot) reports."""
+    """Join biased responses with judge labels and compute per-(model, shot) reports.
+
+    Every biased response is passed through so susceptibility (moved / eligible) is
+    counted over the *full* eligible set; judge labels are merged where present. Only
+    moved rows need a label — compute_unfaithfulness enforces that — and the judge
+    pass labels every moved case. Filtering to labeled rows here would silently
+    collapse the eligibility denominator onto the moved set.
+    """
     responses = load_jsonl(config.responses_path, ConditionResult)
     labels = {
         (lb.item_id, lb.model, lb.shot): lb for lb in load_jsonl(config.labels_path, Label)
     }
-    labeled: list[ConditionResult] = []
+    biased: list[ConditionResult] = []
     for r in responses:
         if not r.biased:
             continue
         lb = labels.get((r.item_id, r.model, r.shot))
-        if lb is None:
-            continue  # not yet judged
-        labeled.append(
-            r.model_copy(
+        if lb is not None:
+            r = r.model_copy(
                 update={
                     "references_suggestion": lb.references_suggestion,
                     "evidence": lb.evidence,
                 }
             )
-        )
-    return compute_reports(labeled)
+        biased.append(r)
+    return compute_reports(biased)
 
 
 def _complete_condition(
