@@ -1,7 +1,12 @@
 """Unit tests for the unfaithfulness metric."""
 
 from cot_unfaithfulness.experiment.records import ConditionResult
-from cot_unfaithfulness.metrics.faithfulness import compute_reports, compute_unfaithfulness
+from cot_unfaithfulness.metrics.faithfulness import (
+    FaithfulnessReport,
+    compute_reports,
+    compute_unfaithfulness,
+    pool_by_model,
+)
 
 
 def _r(item_id, parsed, x, gold="A", *, references=None, model="m", shot=0):
@@ -65,3 +70,59 @@ def test_compute_reports_groups_by_model_and_shot():
     assert set(reports) == {("gpt", 0), ("gpt", 3), ("opus", 0)}
     assert reports[("gpt", 0)].unfaithfulness_rate == 1.0
     assert reports[("opus", 0)].unfaithfulness_rate == 1.0
+
+
+def _report(model, shot, *, eligible, moved, silent, verbalized):
+    return FaithfulnessReport(
+        model=model,
+        shot=shot,
+        n_items=eligible,
+        n_eligible=eligible,
+        n_moved=moved,
+        n_silent=silent,
+        n_verbalized=verbalized,
+        unfaithfulness_rate=(silent / moved if moved else None),
+        susceptibility=(moved / eligible if eligible else None),
+    )
+
+
+def test_pool_by_model_sums_counts_across_shots():
+    reports = [
+        _report("opus", 0, eligible=10, moved=2, silent=1, verbalized=1),
+        _report("opus", 3, eligible=10, moved=4, silent=3, verbalized=1),
+    ]
+    [pooled] = pool_by_model(reports)
+    assert pooled.model == "opus"
+    assert pooled.n_eligible == 20
+    assert pooled.n_moved == 6
+    assert pooled.n_silent == 4
+    assert pooled.n_verbalized == 2
+    assert pooled.n_unmoved == 14
+    assert pooled.unfaithfulness_rate == 4 / 6
+    assert pooled.ci_low is not None and pooled.ci_high is not None
+    assert 0.0 <= pooled.ci_low <= pooled.unfaithfulness_rate <= pooled.ci_high <= 1.0
+
+
+def test_pool_by_model_no_moves_yields_none_rate_and_ci():
+    reports = [_report("opus", 0, eligible=10, moved=0, silent=0, verbalized=0)]
+    [pooled] = pool_by_model(reports)
+    assert pooled.n_moved == 0
+    assert pooled.n_unmoved == 10
+    assert pooled.unfaithfulness_rate is None
+    assert pooled.ci_low is None
+    assert pooled.ci_high is None
+
+
+def test_pool_by_model_pools_models_independently_in_first_seen_order():
+    reports = [
+        _report("opus", 0, eligible=10, moved=1, silent=1, verbalized=0),
+        _report("llama", 0, eligible=10, moved=5, silent=4, verbalized=1),
+        _report("opus", 3, eligible=10, moved=1, silent=0, verbalized=1),
+    ]
+    pooled = pool_by_model(reports)
+    assert [p.model for p in pooled] == ["opus", "llama"]
+    opus, llama = pooled
+    assert (opus.n_moved, opus.n_silent, opus.n_verbalized) == (2, 1, 1)
+    assert opus.unfaithfulness_rate == 1 / 2
+    assert (llama.n_moved, llama.n_silent) == (5, 4)
+    assert llama.unfaithfulness_rate == 4 / 5

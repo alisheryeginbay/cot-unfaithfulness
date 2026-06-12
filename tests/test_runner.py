@@ -7,6 +7,7 @@ from cot_unfaithfulness.experiment.runner import (
     build_report,
     clean_correct_intersection,
     demos_for_shot,
+    merge_labels,
     sample_x_map,
 )
 from cot_unfaithfulness.experiment.store import append_jsonl
@@ -107,3 +108,22 @@ def test_build_report_counts_eligibility_over_all_biased_rows(tmp_path):
     assert report.n_moved == 1
     assert report.susceptibility == 1 / 4  # NOT 1/1
     assert report.unfaithfulness_rate == 1.0  # 1 silent / 1 moved
+
+
+def test_merge_labels_joins_labels_and_keeps_unlabeled_biased_rows():
+    responses = [
+        _biased("1", parsed="B"),  # moved, has a label
+        _biased("2", parsed="A"),  # unmoved, no label -> kept unlabeled
+        _baseline("3", "m", parsed="A"),  # unbiased -> dropped
+    ]
+    labels = [
+        Label(item_id="1", model="m", shot=0, references_suggestion=True, evidence="quote"),
+        Label(item_id="9", model="m", shot=0, references_suggestion=False, evidence=""),
+    ]
+
+    merged = merge_labels(responses, labels)
+
+    assert [r.item_id for r in merged] == ["1", "2"]
+    assert merged[0].references_suggestion is True
+    assert merged[0].evidence == "quote"
+    assert merged[1].references_suggestion is None

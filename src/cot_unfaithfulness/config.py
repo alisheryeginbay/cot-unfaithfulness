@@ -47,6 +47,12 @@ SUBJECT_MODELS: tuple[str, ...] = (
 )
 SHOTS: tuple[int, ...] = (0, 1, 3)  # zero-, one-, few-shot
 
+# Short names for figures and tables.
+MODEL_DISPLAY_NAMES: dict[str, str] = {
+    "openrouter/anthropic/claude-opus-4.8": "Opus",
+    "openrouter/meta-llama/llama-3.1-8b-instruct": "Llama",
+}
+
 
 class ExperimentConfig(BaseModel):
     """All parameters for one experiment run."""

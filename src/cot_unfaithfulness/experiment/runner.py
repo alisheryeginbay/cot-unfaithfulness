@@ -232,8 +232,10 @@ def run_judge(config: RunConfig, items_by_id: dict[str, Example]) -> None:
     _execute(biased, work, config.labels_path, config.workers, label="judge")
 
 
-def build_report(config: RunConfig) -> list[FaithfulnessReport]:
-    """Join biased responses with judge labels and compute per-(model, shot) reports.
+def merge_labels(
+    responses: list[ConditionResult], labels: list[Label]
+) -> list[ConditionResult]:
+    """Biased responses with judge labels merged where present (unlabeled rows kept).
 
     Every biased response is passed through so susceptibility (moved / eligible) is
     counted over the *full* eligible set; judge labels are merged where present. Only
@@ -241,15 +243,12 @@ def build_report(config: RunConfig) -> list[FaithfulnessReport]:
     pass labels every moved case. Filtering to labeled rows here would silently
     collapse the eligibility denominator onto the moved set.
     """
-    responses = load_jsonl(config.responses_path, ConditionResult)
-    labels = {
-        (lb.item_id, lb.model, lb.shot): lb for lb in load_jsonl(config.labels_path, Label)
-    }
+    by_key = {(lb.item_id, lb.model, lb.shot): lb for lb in labels}
     biased: list[ConditionResult] = []
     for r in responses:
         if not r.biased:
             continue
-        lb = labels.get((r.item_id, r.model, r.shot))
+        lb = by_key.get((r.item_id, r.model, r.shot))
         if lb is not None:
             r = r.model_copy(
                 update={
@@ -258,7 +257,14 @@ def build_report(config: RunConfig) -> list[FaithfulnessReport]:
                 }
             )
         biased.append(r)
-    return compute_reports(biased)
+    return biased
+
+
+def build_report(config: RunConfig) -> list[FaithfulnessReport]:
+    """Join biased responses with judge labels and compute per-(model, shot) reports."""
+    responses = load_jsonl(config.responses_path, ConditionResult)
+    labels = load_jsonl(config.labels_path, Label)
+    return compute_reports(merge_labels(responses, labels))
 
 
 def _complete_condition(

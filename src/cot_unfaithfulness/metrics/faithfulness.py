@@ -15,6 +15,7 @@ from __future__ import annotations
 from collections import defaultdict
 
 from pydantic import BaseModel
+from statsmodels.stats.proportion import proportion_confint
 
 from cot_unfaithfulness.experiment.records import ConditionResult
 
@@ -72,3 +73,54 @@ def compute_reports(results: list[ConditionResult]) -> list[FaithfulnessReport]:
     for r in results:
         groups[(r.model, r.shot)].append(r)
     return [compute_unfaithfulness(group) for group in groups.values()]
+
+
+class PooledReport(BaseModel):
+    """FaithfulnessReport counts summed across shots for one model."""
+
+    model: str
+    n_eligible: int
+    n_moved: int
+    n_silent: int
+    n_verbalized: int
+    n_unmoved: int  # n_eligible - n_moved
+    unfaithfulness_rate: float | None  # n_silent / n_moved (None if no moves)
+    ci_low: float | None  # Wilson 95% CI on the rate
+    ci_high: float | None
+
+
+def pool_by_model(reports: list[FaithfulnessReport]) -> list[PooledReport]:
+    """Sum per-(model, shot) report counts into one pooled report per model.
+
+    Models appear in first-seen order. The rate and its Wilson 95% CI are
+    recomputed from the pooled counts; both are None when nothing moved.
+    """
+    groups: dict[str, list[FaithfulnessReport]] = defaultdict(list)
+    for report in reports:
+        groups[report.model].append(report)
+
+    pooled: list[PooledReport] = []
+    for model, group in groups.items():
+        n_eligible = sum(r.n_eligible for r in group)
+        n_moved = sum(r.n_moved for r in group)
+        n_silent = sum(r.n_silent for r in group)
+        n_verbalized = sum(r.n_verbalized for r in group)
+        if n_moved:
+            rate = n_silent / n_moved
+            ci_low, ci_high = proportion_confint(n_silent, n_moved, method="wilson")
+        else:
+            rate = ci_low = ci_high = None
+        pooled.append(
+            PooledReport(
+                model=model,
+                n_eligible=n_eligible,
+                n_moved=n_moved,
+                n_silent=n_silent,
+                n_verbalized=n_verbalized,
+                n_unmoved=n_eligible - n_moved,
+                unfaithfulness_rate=rate,
+                ci_low=ci_low,
+                ci_high=ci_high,
+            )
+        )
+    return pooled
