@@ -98,6 +98,7 @@ def test_pool_by_model_sums_counts_across_shots():
     assert pooled.n_silent == 4
     assert pooled.n_verbalized == 2
     assert pooled.n_unmoved == 14
+    assert pooled.susceptibility == 6 / 20
     assert pooled.unfaithfulness_rate == 4 / 6
     assert pooled.ci_low is not None and pooled.ci_high is not None
     assert 0.0 <= pooled.ci_low <= pooled.unfaithfulness_rate <= pooled.ci_high <= 1.0
@@ -108,9 +109,16 @@ def test_pool_by_model_no_moves_yields_none_rate_and_ci():
     [pooled] = pool_by_model(reports)
     assert pooled.n_moved == 0
     assert pooled.n_unmoved == 10
+    assert pooled.susceptibility == 0.0
     assert pooled.unfaithfulness_rate is None
     assert pooled.ci_low is None
     assert pooled.ci_high is None
+
+
+def test_pool_by_model_no_eligible_yields_none_susceptibility():
+    reports = [_report("opus", 0, eligible=0, moved=0, silent=0, verbalized=0)]
+    [pooled] = pool_by_model(reports)
+    assert pooled.susceptibility is None
 
 
 def test_pool_by_model_pools_models_independently_in_first_seen_order():

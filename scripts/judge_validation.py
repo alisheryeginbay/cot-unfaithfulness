@@ -27,7 +27,7 @@ from pathlib import Path
 from cot_unfaithfulness.data.loaders import load_mmlu
 from cot_unfaithfulness.experiment.records import ConditionResult, Label
 from cot_unfaithfulness.experiment.store import load_jsonl
-from cot_unfaithfulness.metrics.agreement import cohen_kappa
+from cot_unfaithfulness.metrics.validation import score_validation
 from cot_unfaithfulness.prompts.bias import suggested_hint
 from cot_unfaithfulness.prompts.builder import render_choices
 
@@ -184,26 +184,16 @@ def export(results_dir: Path, n_per_subject: int) -> None:
 
 
 def score(results_dir: Path) -> None:
-    key = {k["row"]: k for k in json.loads((results_dir / "validation_key.json").read_text())}
-    human = {}
-    with (results_dir / "validation_answers.csv").open() as f:
-        for row in csv.DictReader(f):
-            val = row["human_references_suggestion"].strip().lower()
-            if val in ("true", "t", "1", "yes", "y"):
-                human[int(row["row"])] = True
-            elif val in ("false", "f", "0", "no", "n"):
-                human[int(row["row"])] = False
-
-    rows = sorted(set(human) & set(key))
-    if not rows:
-        print("no labeled rows found in validation_answers.csv")
+    try:
+        sc = score_validation(
+            results_dir / "validation_key.json", results_dir / "validation_answers.csv"
+        )
+    except ValueError as e:
+        print(e)
         return
-    h = [human[i] for i in rows]
-    j = [key[i]["judge_references_suggestion"] for i in rows]
-    rep = cohen_kappa(h, j)
 
-    moved_rows = [i for i in rows if key[i]["moved"]]
-    print(f"labeled: {len(rows)} ({len(moved_rows)} moved)")
+    rep = sc.overall
+    print(f"labeled: {sc.n_labeled} ({sc.n_moved} moved)")
     print(f"observed agreement: {rep.observed_agreement:.2%}  ({rep.n_agree}/{rep.n})")
     kappa = "undefined" if rep.cohen_kappa is None else f"{rep.cohen_kappa:.3f}"
     print(f"Cohen's kappa: {kappa}")
@@ -212,10 +202,8 @@ def score(results_dir: Path) -> None:
         f"human_true_judge_false={rep.human_true_judge_false} "
         f"human_false_judge_true={rep.human_false_judge_true}"
     )
-    if moved_rows:
-        hm = [human[i] for i in moved_rows]
-        jm = [key[i]["judge_references_suggestion"] for i in moved_rows]
-        repm = cohen_kappa(hm, jm)
+    if sc.moved_only is not None:
+        repm = sc.moved_only
         km = "undefined" if repm.cohen_kappa is None else f"{repm.cohen_kappa:.3f}"
         print(
             f"\n[moved-only — load-bearing] n={repm.n} "
@@ -223,18 +211,14 @@ def score(results_dir: Path) -> None:
         )
 
     print("\n--- disagreements (inspect for judge failure modes) ---")
-    any_dis = False
-    for i in rows:
-        if human[i] != key[i]["judge_references_suggestion"]:
-            any_dis = True
-            k = key[i]
-            print(
-                f"row {i} [{k['model'].split('/')[-1]} shot{k['shot']} "
-                f"{'MOVED' if k['moved'] else 'augment'}] "
-                f"human={human[i]} judge={k['judge_references_suggestion']} "
-                f"judge_evidence={k['judge_evidence']!r}"
-            )
-    if not any_dis:
+    for d in sc.disagreements:
+        print(
+            f"row {d.row} [{d.model.split('/')[-1]} shot{d.shot} "
+            f"{'MOVED' if d.moved else 'augment'}] "
+            f"human={d.human} judge={d.judge} "
+            f"judge_evidence={d.judge_evidence!r}"
+        )
+    if not sc.disagreements:
         print("none — perfect agreement on labeled rows")
 
 

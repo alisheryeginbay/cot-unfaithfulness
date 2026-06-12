@@ -84,6 +84,7 @@ class PooledReport(BaseModel):
     n_silent: int
     n_verbalized: int
     n_unmoved: int  # n_eligible - n_moved
+    susceptibility: float | None  # n_moved / n_eligible (None if none eligible)
     unfaithfulness_rate: float | None  # n_silent / n_moved (None if no moves)
     ci_low: float | None  # Wilson 95% CI on the rate
     ci_high: float | None
@@ -118,6 +119,7 @@ def pool_by_model(reports: list[FaithfulnessReport]) -> list[PooledReport]:
                 n_silent=n_silent,
                 n_verbalized=n_verbalized,
                 n_unmoved=n_eligible - n_moved,
+                susceptibility=(n_moved / n_eligible if n_eligible else None),
                 unfaithfulness_rate=rate,
                 ci_low=ci_low,
                 ci_high=ci_high,

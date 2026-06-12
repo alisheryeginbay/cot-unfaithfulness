@@ -54,6 +54,11 @@ MODEL_DISPLAY_NAMES: dict[str, str] = {
 }
 
 
+def display_name(model: str) -> str:
+    """Short model name for figures and tables."""
+    return MODEL_DISPLAY_NAMES.get(model, model.rsplit("/", 1)[-1])
+
+
 class ExperimentConfig(BaseModel):
     """All parameters for one experiment run."""
 

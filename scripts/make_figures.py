@@ -18,7 +18,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
-from cot_unfaithfulness.config import MODEL_DISPLAY_NAMES, SUBJECT_MODELS
+from cot_unfaithfulness.config import SUBJECT_MODELS, display_name
 from cot_unfaithfulness.experiment.records import ConditionResult, Label
 from cot_unfaithfulness.experiment.runner import merge_labels
 from cot_unfaithfulness.experiment.store import load_jsonl
@@ -34,12 +34,8 @@ plt.rcParams["svg.hashsalt"] = "cot-unfaithfulness"  # deterministic SVG element
 _METADATA = {"svg": {"Date": None}, "pdf": {"CreationDate": None}}
 
 
-def _display(model: str) -> str:
-    return MODEL_DISPLAY_NAMES.get(model, model.rsplit("/", 1)[-1])
-
-
 def render_figure(pooled: list[PooledReport]) -> Figure:
-    names = [_display(p.model) for p in pooled]
+    names = [display_name(p.model) for p in pooled]
     x = range(len(pooled))
     n = pooled[0].n_eligible
     assert all(p.n_eligible == n for p in pooled), "models have unequal eligible sets"
@@ -112,7 +108,7 @@ def main() -> None:
     print(f"{'model':<8} {'silent':>6} {'verbalized':>10} {'moved':>6} {'eligible':>8}")
     for p in pooled:
         print(
-            f"{_display(p.model):<8} {p.n_silent:>6} {p.n_verbalized:>10}"
+            f"{display_name(p.model):<8} {p.n_silent:>6} {p.n_verbalized:>10}"
             f" {p.n_moved:>6} {p.n_eligible:>8}"
         )
 
