@@ -80,7 +80,7 @@ Previously, I considered representing the Panel B using bars and using its width
 ---
 
 Now that the main figure is done, we can focus on supporting tables:
-- Per `(model, shot)` pair information. This includes: `eligible`, `moved`, `susceptibility`, `silent`, `verbalized`, `unfaithfulness`. 
+- Per `(model, shot)` pair information. This includes: `eligible`, `moved`, `susceptibility`, `silent`, `verbalized`, `unfaithfulness` and `95% CI`. 
 - Pooled data. The same columns as above. 
 - Judge validation.
 
