@@ -10,6 +10,9 @@ The format is:
 <note>
 ```
 
+> [!IMPORTANT]
+> This file is only for the personal usage, thus, AI writing isn't allowed to be used here.
+
 ---
 
 *2026-06-12*
