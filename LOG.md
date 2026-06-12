@@ -73,3 +73,12 @@ However, the thing that's missing from this graph is that $M_{\text{Opus}}$ bein
 Panel B is going to show $U_i$ by showing the rate for each model $i$. However, there is an issue we still need to address: **rates don't take in the factor the $M_i$**, i.e., $1 / 3$ and $100 / 300$ might be treated the same way. We can use Wilson intervals to show the level of uncertainty.
 
 Previously, I considered representing the Panel B using bars and using its width as a proportion of `moved` sample size per model to maximum value of `moved` sample size across two models. This way I could've highlight the small sample size — however, I then realized that this geometric representation carries a small value overall since Wilson interval already cover the level of uncertainty, which, by our results, is because of the small sample size.
+
+---
+
+Now that the main figure is done, we can focus on supporting tables:
+- Per `(model, shot)` pair information. This includes: `eligible`, `moved`, `susceptibility`, `silent`, `verbalized`, `unfaithfulness`. 
+- Pooled data. The same columns as above. 
+- Judge validation.
+
+These are the things that come to my mind first, though I might be missing something.
