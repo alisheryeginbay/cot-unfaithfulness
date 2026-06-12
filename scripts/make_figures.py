@@ -28,6 +28,11 @@ COLOR_SILENT = "#D85A30"
 COLOR_VERBALIZED = "#F0997B"
 COLOR_UNMOVED = "#B4B2A9"
 
+plt.rcParams["svg.hashsalt"] = "cot-unfaithfulness"  # deterministic SVG element ids
+
+# Strip run timestamps so regenerating an unchanged figure produces no git diff.
+_METADATA = {"svg": {"Date": None}, "pdf": {"CreationDate": None}}
+
 
 def _display(model: str) -> str:
     return MODEL_DISPLAY_NAMES.get(model, model.rsplit("/", 1)[-1])
@@ -93,7 +98,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--results-dir", type=Path, default=Path("results"))
     ap.add_argument("--out-dir", type=Path, default=None, help="default: <results-dir>/figures")
-    ap.add_argument("--formats", default="png,pdf")
+    ap.add_argument("--formats", default="png,pdf,svg")
     ap.add_argument("--dpi", type=int, default=200)
     args = ap.parse_args()
     out_dir = args.out_dir or args.results_dir / "figures"
@@ -115,7 +120,7 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     for fmt in args.formats.split(","):
         path = out_dir / f"unfaithfulness_pooled.{fmt}"
-        fig.savefig(path, dpi=args.dpi)
+        fig.savefig(path, dpi=args.dpi, metadata=_METADATA.get(fmt))
         print(f"wrote {path}")
 
 
