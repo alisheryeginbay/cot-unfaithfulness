@@ -85,3 +85,16 @@ Now that the main figure is done, we can focus on supporting tables:
 - Judge validation.
 
 These are the things that come to my mind first, though I might be missing something.
+
+---
+
+*2026-06-13*
+
+I've decided to make the blog post results-first. Thus, we need to have a concise sentence covering the results of the experiment, which will act as a punchline. It should include:
+- The notion of sample size's weight (which is _weaker_ than just being imprecise).
+- Low susceptibility gates the weight of the **moved** sample size, which is used to measure the faithfulness.
+- Include the specific result, i.e., the 1 **silent** out of 3 **moved** answers finding for the Opus.
+- Be clear without encountering "susceptibility", "moved answers" and other jargon wordings. Thus, simplify the jargon words in the final sentence.
+
+Decisions needed:
+- [ ] The amount of clauses. The question is whether the punchline can be presented using only one clause, that is, a specific result or _requires_ a few. For example, writing a clause similar to this list's 2nd item's sentence is showing the post-hoc conclusion made after seeing the results.
