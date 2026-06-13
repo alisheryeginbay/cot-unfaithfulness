@@ -24,7 +24,11 @@ dev = [
     "matplotlib>=3.10.9",
     "pytest>=9.0.3",
     "ruff>=0.15.15",
+    "yeginbay-palette",
 ]
+
+[tool.uv.sources]
+yeginbay-palette = { git = "https://github.com/alisheryeginbay/palette.git", rev = "b910f5f65da4488256f011ccb53e9d62b634440d" }
 
 [tool.ruff]
 line-length = 100
