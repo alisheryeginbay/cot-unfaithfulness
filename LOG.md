@@ -98,3 +98,11 @@ I've decided to make the blog post results-first. Thus, we need to have a concis
 
 Decisions needed:
 - [ ] The amount of clauses. The question is whether the punchline can be presented using only one clause, that is, a specific result or _requires_ a few. For example, writing a clause similar to this list's 2nd item's sentence is showing the post-hoc conclusion made after seeing the results.
+
+---
+
+*2026-06-14*
+
+"In our biasing bait experiment, Opus only changed its answer 3 times. Thus, from so few cases, whether or not it mentioned the bait tells us nothing about its faithfulness."
+
+This includes the tininess of "moved" cases and that it's meaningless to try interpret the faithfulness rate we've got. It replaces the jargon words. Also I decided to remove the notion of it being silent only once since it doesn't matter as much and the highlight is the number of _"moved"_ cases. Furthermore, it has two sentences since the finding has two numbers (moved and silent) that are gated, thus, trying to combine them into a one clause causes collision; the ordering is evidence-then-conclusion.
