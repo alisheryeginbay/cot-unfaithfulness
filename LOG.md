@@ -60,6 +60,7 @@ From these, we can see that we have 3 groups: `moved-silent`, `moved-verbalized`
 For each model $i \in {\text{Opus}, \text{Llama}}$, let the $M_i$ and $K_i$ denote the number of moved and silent samples, respectively, among the $N = 996$ eligible ones, so that $S_i = \frac{M_i}{N}$ and $U_i = \frac{K_i}{M_i}$.
 
 The observed values:
+
 $$
 \begin{aligned}
 M_{\text{Opus}}  &= 3,   & K_{\text{Opus}}  &= 1, \\
