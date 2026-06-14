@@ -5,7 +5,8 @@ from cot_unfaithfulness.metrics.faithfulness import FaithfulnessReport, PooledRe
 from cot_unfaithfulness.metrics.tables import (
     fmt_ci,
     fmt_rate,
-    judge_validation_md,
+    judge_agreement_table,
+    judge_disagreements_table,
     per_model_shot_table,
     pooled_table,
 )
@@ -78,8 +79,6 @@ def test_per_model_shot_table_exact_output():
         _report("x/y/other-model", 3, eligible=4, moved=0, silent=0, verbalized=0),
     ]
     assert per_model_shot_table(reports, NAMES) == (
-        "# Per (model, shot)\n"
-        "\n"
         "| model | shot | eligible | moved | susceptibility | silent | verbalized "
         "| unfaithfulness |\n"
         "|---|---|---|---|---|---|---|---|\n"
@@ -97,8 +96,6 @@ def test_pooled_table_exact_output():
         _pooled("x/y/other-model", eligible=10, moved=0, silent=0, verbalized=0),
     ]
     assert pooled_table(pooled, NAMES) == (
-        "# Pooled across shots\n"
-        "\n"
         "| model | eligible | moved | susceptibility | silent | verbalized "
         "| unfaithfulness | 95% CI |\n"
         "|---|---|---|---|---|---|---|---|\n"
@@ -107,7 +104,39 @@ def test_pooled_table_exact_output():
     )
 
 
-def test_judge_validation_md_all_moved_suppresses_overall():
+def test_judge_agreement_table_all_moved_single_column():
+    score = _score(
+        key_rows=[
+            (True, True, True), (False, False, True),
+            (True, False, True), (False, False, True),
+        ],
+    )
+    md = judge_agreement_table(score)
+    assert "| metric | moved-only |" in md
+    assert "overall" not in md
+    assert "| n | 4 |" in md
+    assert "| observed agreement | 0.750 (3/4) |" in md
+    assert "| human true / judge false | 1 |" in md
+    assert md.endswith("\n") and not md.endswith("\n\n")
+
+
+def test_judge_agreement_table_mixed_shows_both_columns():
+    score = _score(
+        key_rows=[(True, True, True), (False, False, True), (False, False, False)],
+    )
+    md = judge_agreement_table(score)
+    assert "| metric | moved-only | overall |" in md
+    assert "| n | 2 | 3 |" in md
+
+
+def test_judge_agreement_table_no_moved_rows_overall_only():
+    score = _score(key_rows=[(True, True, False), (False, False, False)])
+    md = judge_agreement_table(score)
+    assert "| metric | overall |" in md
+    assert "moved-only" not in md
+
+
+def test_judge_disagreements_table_rows():
     score = _score(
         key_rows=[
             (True, True, True), (False, False, True),
@@ -120,34 +149,17 @@ def test_judge_validation_md_all_moved_suppresses_overall():
             )
         ],
     )
-    md = judge_validation_md(score)
-    assert "## Moved-only\n" in md
-    assert "Overall" not in md
-    assert "| n | 4 |" in md
-    assert "| observed agreement | 0.750 (3/4) |" in md
-    assert "| human true / judge false | 1 |" in md
+    md = judge_disagreements_table(score)
+    assert "| row | model | shot | moved | human | judge | judge evidence |" in md
     assert "| 2 | llama | 1 | yes | true | false |  |" in md
-    assert md.endswith("\n") and not md.endswith("\n\n")
 
 
-def test_judge_validation_md_mixed_shows_both_sections():
-    score = _score(
-        key_rows=[(True, True, True), (False, False, True), (False, False, False)],
-    )
-    md = judge_validation_md(score)
-    assert "## Moved-only" in md
-    assert "## Overall" in md
-    assert "None — perfect agreement on labeled rows." in md
+def test_judge_disagreements_table_empty():
+    score = _score(key_rows=[(True, True, True), (False, False, True)])
+    assert judge_disagreements_table(score) == "None — perfect agreement on labeled rows.\n"
 
 
-def test_judge_validation_md_no_moved_rows_overall_is_primary():
-    score = _score(key_rows=[(True, True, False), (False, False, False)])
-    md = judge_validation_md(score)
-    assert "## Overall" in md
-    assert "Moved-only" not in md
-
-
-def test_judge_validation_md_escapes_evidence():
+def test_judge_disagreements_table_escapes_evidence():
     score = _score(
         key_rows=[(True, False, True), (False, False, True)],
         disagreements=[
@@ -157,5 +169,5 @@ def test_judge_validation_md_escapes_evidence():
             )
         ],
     )
-    md = judge_validation_md(score)
+    md = judge_disagreements_table(score)
     assert r"a \| b c" in md

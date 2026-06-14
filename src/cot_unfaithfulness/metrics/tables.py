@@ -58,7 +58,7 @@ def per_model_shot_table(
         "model", "shot", "eligible", "moved", "susceptibility",
         "silent", "verbalized", "unfaithfulness",
     ]  # fmt: skip
-    return "# Per (model, shot)\n\n" + _table(header, rows)
+    return _table(header, rows)
 
 
 def pooled_table(pooled: list[PooledReport], display_names: Mapping[str, str]) -> str:
@@ -79,51 +79,57 @@ def pooled_table(pooled: list[PooledReport], display_names: Mapping[str, str]) -
         "model", "eligible", "moved", "susceptibility",
         "silent", "verbalized", "unfaithfulness", "95% CI",
     ]  # fmt: skip
-    return "# Pooled across shots\n\n" + _table(header, rows)
+    return _table(header, rows)
 
 
 def _escape_cell(text: str) -> str:
     return " ".join(text.split()).replace("|", r"\|")
 
 
-def _agreement_section(title: str, rep: AgreementReport) -> str:
-    rows = [
-        ["n", str(rep.n)],
-        ["observed agreement", f"{rep.observed_agreement:.3f} ({rep.n_agree}/{rep.n})"],
-        ["Cohen's kappa", fmt_rate(rep.cohen_kappa)],
-        ["both true", str(rep.both_true)],
-        ["both false", str(rep.both_false)],
-        ["human true / judge false", str(rep.human_true_judge_false)],
-        ["human false / judge true", str(rep.human_false_judge_true)],
+def _agreement_pairs(rep: AgreementReport) -> list[tuple[str, str]]:
+    return [
+        ("n", str(rep.n)),
+        ("observed agreement", f"{rep.observed_agreement:.3f} ({rep.n_agree}/{rep.n})"),
+        ("Cohen's kappa", fmt_rate(rep.cohen_kappa)),
+        ("both true", str(rep.both_true)),
+        ("both false", str(rep.both_false)),
+        ("human true / judge false", str(rep.human_true_judge_false)),
+        ("human false / judge true", str(rep.human_false_judge_true)),
     ]
-    return f"## {title}\n\n" + _table(["metric", "value"], rows)
 
 
-def judge_validation_md(score: ValidationScore) -> str:
-    sections = ["# Judge validation\n"]
+def judge_agreement_table(score: ValidationScore) -> str:
+    """Human/judge agreement metrics. Scopes (moved-only, overall) become columns."""
+    cols: list[tuple[str, AgreementReport]] = []
     if score.moved_only is not None:
-        sections.append(_agreement_section("Moved-only", score.moved_only))
+        cols.append(("moved-only", score.moved_only))
         if score.overall.n != score.moved_only.n:
-            sections.append(_agreement_section("Overall", score.overall))
+            cols.append(("overall", score.overall))
     else:
-        sections.append(_agreement_section("Overall", score.overall))
+        cols.append(("overall", score.overall))
 
-    if score.disagreements:
-        rows = [
-            [
-                str(d.row),
-                d.model.rsplit("/", 1)[-1],
-                str(d.shot),
-                "yes" if d.moved else "no",
-                str(d.human).lower(),
-                str(d.judge).lower(),
-                _escape_cell(d.judge_evidence or ""),
-            ]
-            for d in score.disagreements
+    values = [_agreement_pairs(rep) for _, rep in cols]
+    metrics = [m for m, _ in values[0]]
+    rows = [[metric] + [vals[i][1] for vals in values] for i, metric in enumerate(metrics)]
+    header = ["metric"] + [label for label, _ in cols]
+    return _table(header, rows)
+
+
+def judge_disagreements_table(score: ValidationScore) -> str:
+    """Rows where human and judge labels diverge."""
+    if not score.disagreements:
+        return "None — perfect agreement on labeled rows.\n"
+    rows = [
+        [
+            str(d.row),
+            d.model.rsplit("/", 1)[-1],
+            str(d.shot),
+            "yes" if d.moved else "no",
+            str(d.human).lower(),
+            str(d.judge).lower(),
+            _escape_cell(d.judge_evidence or ""),
         ]
-        header = ["row", "model", "shot", "moved", "human", "judge", "judge evidence"]
-        sections.append("## Disagreements\n\n" + _table(header, rows))
-    else:
-        sections.append("## Disagreements\n\nNone — perfect agreement on labeled rows.\n")
-
-    return "\n".join(sections)
+        for d in score.disagreements
+    ]
+    header = ["row", "model", "shot", "moved", "human", "judge", "judge evidence"]
+    return _table(header, rows)

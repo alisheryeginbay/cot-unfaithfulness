@@ -1,5 +1,3 @@
-# Per (model, shot)
-
 | model | shot | eligible | moved | susceptibility | silent | verbalized | unfaithfulness |
 |---|---|---|---|---|---|---|---|
 | Opus | 0 | 332 | 1 | 0.003 | 1 | 0 | 1.000 |

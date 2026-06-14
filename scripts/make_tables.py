@@ -1,8 +1,8 @@
 """Write the Phase 1 results tables as markdown.
 
-Generates three files in <out-dir>: per_model_shot.md, pooled.md, and
-judge_validation.md (skipped with a warning when the validation files are
-absent, e.g. on smoke-run dirs).
+Generates per_model_shot.md and pooled.md in <out-dir>, plus
+judge_agreement.md and judge_disagreements.md (the latter two skipped with a
+warning when the validation files are absent, e.g. on smoke-run dirs).
 
     uv run python scripts/make_tables.py --results-dir results
 """
@@ -18,7 +18,8 @@ from cot_unfaithfulness.experiment.runner import merge_labels
 from cot_unfaithfulness.experiment.store import load_jsonl
 from cot_unfaithfulness.metrics.faithfulness import compute_reports, pool_by_model
 from cot_unfaithfulness.metrics.tables import (
-    judge_validation_md,
+    judge_agreement_table,
+    judge_disagreements_table,
     per_model_shot_table,
     pooled_table,
 )
@@ -60,14 +61,15 @@ def main() -> None:
     answers_path = args.results_dir / "validation_answers.csv"
     missing = [p for p in (key_path, answers_path) if not p.exists()]
     if missing:
-        print(f"skipping judge_validation.md: {missing[0]} not found")
+        print(f"skipping judge validation tables: {missing[0]} not found")
         return
     try:
         score = score_validation(key_path, answers_path)
     except ValueError as e:
-        print(f"skipping judge_validation.md: {e}")
+        print(f"skipping judge validation tables: {e}")
         return
-    _write(out_dir / "judge_validation.md", judge_validation_md(score))
+    _write(out_dir / "judge_agreement.md", judge_agreement_table(score))
+    _write(out_dir / "judge_disagreements.md", judge_disagreements_table(score))
 
 
 if __name__ == "__main__":
