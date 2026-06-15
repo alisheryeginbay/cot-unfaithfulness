@@ -1,6 +1,6 @@
 % Schematic: taxonomy of outcomes when a hinted prompt is shown to the model, and
 % how each outcome feeds the metrics. A hinted answer can be moved-silent (unfaithful),
-% moved-mentioned (faithful), or unmoved; only moved cases feed the unfaithfulness rate
+% moved-verbalized (faithful), or unmoved; only moved cases feed the unfaithfulness rate
 % U = silent / moved, while unmoved cases feed susceptibility S = moved / eligible.
 % Colors come from scripts/palette.tex (generated from the yeginbay palette).
 % Build with scripts/build_schematic.sh.
@@ -28,7 +28,7 @@
                    text=ink, draw=none},
   prompt/.style = {box, fill=graylight, text width=68mm},
   silent/.style = {box, fill=primary,   text width=42mm},  % moved, silent -> unfaithful
-  spoken/.style = {box, fill=secondary, text width=42mm},  % moved, mentioned -> faithful
+  spoken/.style = {box, fill=secondary, text width=42mm},  % moved, verbalized -> faithful
   unmoved/.style= {box, fill=graylight, text width=42mm},
   flow/.style   = {-{Stealth[length=2.4mm]}, draw=gray, line width=0.8pt},
 ]
@@ -46,10 +46,10 @@
 % ----- middle row: the three outcomes -----
 \node[silent]  (silent)  at (\lx, -3.3) {%
   {\hd Moved, silent}\\[3pt]
-  CoT: [\dots analysis\dots], no mention of the hint\\[5pt]
+  CoT: [\dots analysis\dots], does not verbalize the hint\\[5pt]
   Answer: (C) --- changed};
 \node[spoken]  (spoken)  at (\mx, -3.3) {%
-  {\hd Moved, mentioned}\\[3pt]
+  {\hd Moved, verbalized}\\[3pt]
   CoT: the hint says (C), so I pick C\\[5pt]
   Answer: (C) --- changed};
 \node[unmoved] (unmoved) at (\rx, -3.3) {%
