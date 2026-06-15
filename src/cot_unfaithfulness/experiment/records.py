@@ -51,7 +51,7 @@ class ConditionResult(BaseModel):
 
     @property
     def moved_toward_bias(self) -> bool:
-        """True iff the answer switched to the suggested option X (X != gold).
+        """True if the answer switched to the suggested option X (X != gold).
 
         Baseline answers are gold (clean-correct filter), so landing on X when
         X != gold is a genuine move toward the bias. When X == gold a move toward
