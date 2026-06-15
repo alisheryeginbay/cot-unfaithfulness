@@ -107,3 +107,17 @@ Decisions needed:
 "In our biasing bait experiment, Opus only changed its answer 3 times. Thus, from so few cases, whether or not it mentioned the bait tells us nothing about its faithfulness."
 
 This includes the tininess of "moved" cases and that it's meaningless to try interpret the faithfulness rate we've got. It replaces the jargon words. Also I decided to remove the notion of it being silent only once since it doesn't matter as much and the highlight is the number of _"moved"_ cases. Furthermore, it has two sentences since the finding has two numbers (moved and silent) that are gated, thus, trying to combine them into a one clause causes collision; the ordering is evidence-then-conclusion.
+
+---
+
+*2026-06-15*
+
+I've finished the close-to-ready draft of the [blog post](https://yeginbay.com/cot-unfaithfulness-phase-1/) (link will probably be changed). There are still a few things that I need to address:
+- Title. CoT Unfaithfulness: Phase 1 scopes the experiment correctly, but tells nothing about the finding. The new title should be directed towards susceptibility's gating idea.
+- Conclusion / what's next. The blog post ends abruptly on pooling limitation.
+
+A list of things that we resolved during writing the blog post:
+- Preview explains the motive and includes the punchline.
+- Introduction of the blog post doesn't handle specific numbers but rather provides a high level abstraction of the experiment and findings.
+- Results section covers the experiment results in a detailed way mentioning the gating effect.
+- The blog post fixes the terminology to "moves", "silent" and "verbalized" for consistency.
